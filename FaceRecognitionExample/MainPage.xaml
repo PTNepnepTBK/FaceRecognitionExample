@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+             x:Class="FaceRecognitionExample.MainPage">
+
+    <Grid>
+        <!-- 1:1 Camera Container -->
+        <Grid x:Name="cameraContainer" HorizontalOptions="Center" VerticalOptions="Center">
+            <!-- Camera Preview -->
+            <toolkit:CameraView 
+                x:Name="cameraView"
+                HorizontalOptions="Fill"
+                VerticalOptions="Fill"
+                MediaCaptured="OnMediaCaptured" />
+
+            <!-- Static Image Preview (Hidden by default) -->
+            <Image 
+                x:Name="imgPreview"
+                HorizontalOptions="Fill"
+                VerticalOptions="Fill"
+                Aspect="AspectFit"
+                IsVisible="False" />
+
+            <!-- Overlay for Bounding Boxes -->
+            <GraphicsView 
+                x:Name="graphicsView"
+                HorizontalOptions="Fill"
+                VerticalOptions="Fill"
+                InputTransparent="True" />
+        </Grid>
+
+        <Label x:Name="lblStatus" 
+               TextColor="#FFFFFF" 
+               BackgroundColor="#000000" 
+               VerticalOptions="Start" 
+               HorizontalOptions="Center" 
+               Margin="0, 20, 0, 0"
+               Padding="10, 5" />
+
+        <ActivityIndicator 
+            x:Name="loadingIndicator"
+            IsRunning="False"
+            IsVisible="False"
+            HorizontalOptions="Center"
+            VerticalOptions="Center"
+            Color="White" />
+
+        <!-- Controls -->
+        <HorizontalStackLayout
+            x:Name="controlPanel"
+            HorizontalOptions="Center"
+            VerticalOptions="End"
+            Margin="0, 0, 0, 30"
+            Spacing="20">
+            
+            <Button 
+                x:Name="btnSwitchCamera"
+                Text="Switch Camera"
+                Clicked="OnSwitchCameraClicked" />
+
+            <Button 
+                x:Name="btnCapture"
+                Text="Capture &amp; Detect"
+                Clicked="OnCaptureClicked" />
+
+            <Button 
+                x:Name="btnRetake"
+                Text="Retake"
+                IsVisible="False"
+                Clicked="OnRetakeClicked" />
+        </HorizontalStackLayout>
+    </Grid>
+
+</ContentPage>

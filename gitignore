@@ -1,0 +1,31 @@
+# Build results
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+
+# .NET MAUI
+*.apk
+*.aab
+*.ipa
+
+# Visual Studio / Rider
+.vs/
+.idea/
+*.user
+*.suo
+
+# macOS
+.DS_Store
+
+# NuGet
+*.nupkg
+packages/
+
+# Model/asset besar (kalau ternyata perlu didownload manual, jangan commit ke git)
+*.onnx
+
+# Local secrets/config
+appsettings.local.json
