@@ -12,7 +12,8 @@ namespace FaceRecognitionExample
 {
     public partial class MainPage : ContentPage
     {
-        private FaceDetector _faceDetector;
+        // private FaceDetector _faceDetector;
+        private YuNetFaceDetector _yuNetDetector;
         private FaceEmbedder _faceEmbedder;
         private FaceBoundingBoxDrawable _drawable;
         private readonly IFaceStorageService _storageService;
@@ -29,7 +30,7 @@ namespace FaceRecognitionExample
             graphicsView.Drawable = _drawable;
 
             // Initialize FaceDetector and FaceEmbedder on a background thread to prevent UI freeze
-            Task.Run(() =>
+            Task.Run(async () =>
             {
                 try
                 {
@@ -39,7 +40,14 @@ namespace FaceRecognitionExample
                     options.ExecutionMode = ExecutionMode.ORT_SEQUENTIAL;
 
                     // Initialize with custom options and default thresholds (0.3f, 0.4f, 0.5f)
-                    _faceDetector = new FaceDetector(options, 0.3f, 0.4f, 0.5f);
+                    // _faceDetector = new FaceDetector(options, 0.3f, 0.4f, 0.5f);
+                    
+                    using var stream = await FileSystem.OpenAppPackageFileAsync("face_detection_yunet.onnx");
+                    using var memoryStream = new MemoryStream();
+                    await stream.CopyToAsync(memoryStream);
+                    byte[] modelBytes = memoryStream.ToArray();
+                    _yuNetDetector = new YuNetFaceDetector(modelBytes, 640, 640);
+
                     _faceEmbedder = new FaceEmbedder(options);
                     _isModelLoading = false;
                     MainThread.BeginInvokeOnMainThread(() => lblStatus.Text = "Model Siap");
@@ -111,6 +119,8 @@ namespace FaceRecognitionExample
         private async void OnRetakeClicked(object sender, EventArgs e)
         {
             // Reset UI
+            loadingIndicator.IsRunning = false;
+            loadingIndicator.IsVisible = false;
             imgPreview.IsVisible = false;
             imgPreview.Source = null;
             cameraView.IsVisible = true;
@@ -135,7 +145,7 @@ namespace FaceRecognitionExample
                 return;
             }
 
-            if (_faceDetector == null || _faceEmbedder == null)
+            if (_yuNetDetector == null || _faceEmbedder == null)
             {
                 await Dispatcher.DispatchAsync(() => 
                 {
@@ -196,7 +206,7 @@ namespace FaceRecognitionExample
                     options.InJustDecodeBounds = true;
                     Android.Graphics.BitmapFactory.DecodeByteArray(imageBytes, 0, imageBytes.Length, options);
                     
-                    int maxDim = 192; // Reduced to 192 to cut AI convolution load by ~36% while perfectly matching 128px embedder
+                    int maxDim = 160; // Set to 160 to perfectly match YuNet 160x160 input size
                     options.InSampleSize = 1;
                     if (options.OutWidth > maxDim || options.OutHeight > maxDim)
                     {
@@ -262,7 +272,8 @@ namespace FaceRecognitionExample
                         Debug.WriteLine($"[Telemetry] Preprocessing (1:1 & Matrix): {tPreprocess} ms");
 
                         swStage.Restart();
-                        faces = _faceDetector.Forward(imageMatrix); // Already in Task.Run
+                        // faces = _faceDetector.Forward(imageMatrix); // Already in Task.Run
+                        faces = _yuNetDetector.Forward(imageMatrix);
                         swStage.Stop();
                         tDetect = swStage.ElapsedMilliseconds;
                         Debug.WriteLine($"[Telemetry] FaceDetector.Forward: {tDetect} ms");
@@ -398,10 +409,14 @@ namespace FaceRecognitionExample
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error detecting faces: {ex}");
-                await Dispatcher.DispatchAsync(() => 
+                await Dispatcher.DispatchAsync(async () => 
                 {
-                    lblStatus.Text = "Error saat mendeteksi wajah.";
-                    OnRetakeClicked(null, EventArgs.Empty);
+                    loadingIndicator.IsRunning = false;
+                    loadingIndicator.IsVisible = false;
+                    btnCapture.IsVisible = true;
+                    btnSwitchCamera.IsVisible = true;
+                    lblStatus.Text = $"Error: {ex.Message}";
+                    await DisplayAlert("Error Saat Deteksi", $"{ex.GetType().Name}:\n{ex.Message}", "OK");
                 });
             }
         }
