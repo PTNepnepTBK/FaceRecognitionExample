@@ -14,20 +14,43 @@
                 VerticalOptions="Fill"
                 MediaCaptured="OnMediaCaptured" />
 
-            <!-- Static Image Preview (Hidden by default) -->
-            <Image 
-                x:Name="imgPreview"
-                HorizontalOptions="Fill"
-                VerticalOptions="Fill"
-                Aspect="AspectFill"
-                IsVisible="False" />
+            <!-- Container for Results -->
+            <Grid x:Name="resultContainer" IsVisible="False" HorizontalOptions="Fill" VerticalOptions="Fill">
+                
+                <!-- State 0: Original + BBox -->
+                <Grid x:Name="gridOriginal" HorizontalOptions="Fill" VerticalOptions="Fill">
+                    <Image 
+                        x:Name="imgPreview"
+                        HorizontalOptions="Fill"
+                        VerticalOptions="Fill"
+                        Aspect="AspectFill" />
+                    
+                    <GraphicsView 
+                        x:Name="graphicsView"
+                        HorizontalOptions="Fill"
+                        VerticalOptions="Fill"
+                        InputTransparent="True" />
+                </Grid>
 
-            <!-- Overlay for Bounding Boxes -->
-            <GraphicsView 
-                x:Name="graphicsView"
-                HorizontalOptions="Fill"
-                VerticalOptions="Fill"
-                InputTransparent="True" />
+                <!-- State 1: Cropped Face -->
+                <Grid x:Name="gridCropped" IsVisible="False" HorizontalOptions="Fill" VerticalOptions="Fill" BackgroundColor="Black">
+                    <Image 
+                        x:Name="imgCroppedFace"
+                        Aspect="AspectFit"
+                        HorizontalOptions="Fill"
+                        VerticalOptions="Fill" />
+                </Grid>
+
+                <!-- Caption Label -->
+                <Label x:Name="lblPreviewCaption"
+                       Text="Gambar Asli + Bounding Box"
+                       TextColor="White"
+                       BackgroundColor="#AA000000"
+                       Padding="10,5"
+                       HorizontalOptions="Center"
+                       VerticalOptions="Start"
+                       Margin="0,15,0,0" />
+            </Grid>
         </Grid>
 
         <Label x:Name="lblStatus" 
@@ -47,12 +70,22 @@
             Color="White" />
 
         <!-- Controls -->
-        <HorizontalStackLayout
-            x:Name="controlPanel"
+        <VerticalStackLayout
             HorizontalOptions="Center"
             VerticalOptions="End"
             Margin="0, 0, 0, 30"
-            Spacing="20">
+            Spacing="15">
+            
+            <Slider x:Name="sliderPreview"
+                    Minimum="0" Maximum="1" Value="0"
+                    IsVisible="False"
+                    ValueChanged="OnPreviewSliderValueChanged"
+                    HorizontalOptions="Center" WidthRequest="250" />
+
+            <HorizontalStackLayout
+                x:Name="controlPanel"
+                HorizontalOptions="Center"
+                Spacing="20">
             
             <Button 
                 x:Name="btnSwitchCamera"
@@ -75,6 +108,7 @@
                 IsVisible="False"
                 Clicked="OnRetakeClicked" />
         </HorizontalStackLayout>
+        </VerticalStackLayout>
     </Grid>
 
 </ContentPage>

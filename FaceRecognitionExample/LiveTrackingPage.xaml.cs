@@ -20,7 +20,7 @@ namespace FaceRecognitionExample
         {
             InitializeComponent();
             
-            _drawable = new FaceBoundingBoxDrawable();
+            _drawable = new FaceBoundingBoxDrawable { IsMirrored = true };
             graphicsView.Drawable = _drawable;
             
             InitializeDetectorAsync();
@@ -45,6 +45,16 @@ namespace FaceRecognitionExample
                 lblStatus.Text = $"Error Load Model: {ex.Message}";
                 lblStatus.TextColor = Colors.Red;
                 Debug.WriteLine($"Failed to initialize YuNet: {ex}");
+            }
+        }
+
+        protected override void OnSizeAllocated(double width, double height)
+        {
+            base.OnSizeAllocated(width, height);
+            // Force the camera container to be a perfect square based on screen width
+            if (width > 0 && cameraContainer.HeightRequest != width)
+            {
+                cameraContainer.HeightRequest = width;
             }
         }
 

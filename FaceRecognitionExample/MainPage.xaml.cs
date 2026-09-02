@@ -121,12 +121,16 @@ namespace FaceRecognitionExample
             // Reset UI
             loadingIndicator.IsRunning = false;
             loadingIndicator.IsVisible = false;
-            imgPreview.IsVisible = false;
-            imgPreview.Source = null;
-            cameraView.IsVisible = true;
             btnRetake.IsVisible = false;
             btnCapture.IsVisible = true;
             btnSwitchCamera.IsVisible = true;
+            
+            resultContainer.IsVisible = false;
+            sliderPreview.IsVisible = false;
+            sliderPreview.Value = 0;
+            
+            imgPreview.Source = null;
+            imgCroppedFace.Source = null;
             
             _drawable.Faces = null;
             graphicsView.Invalidate();
@@ -195,6 +199,8 @@ namespace FaceRecognitionExample
                 int finalWidth = 0;
                 int finalHeight = 0;
                 string statusText = "Tidak ada wajah";
+
+                byte[] croppedFaceBytes = null;
 
                 // UI update variables
                 bool isDuplicateFinal = false;
@@ -298,6 +304,33 @@ namespace FaceRecognitionExample
                             tAlign = swStage.ElapsedMilliseconds;
                             Debug.WriteLine($"[Telemetry] Face Alignment/Crop: {tAlign} ms");
                             
+#if ANDROID
+                            try
+                            {
+                                int faceH = faceImage[0].GetLength(0);
+                                int faceW = faceImage[0].GetLength(1);
+                                int[] facePixels = new int[faceW * faceH];
+                                for (int y = 0; y < faceH; y++)
+                                {
+                                    for (int x = 0; x < faceW; x++)
+                                    {
+                                        int b = (int)(Math.Max(0f, Math.Min(1f, faceImage[0][y, x])) * 255);
+                                        int g = (int)(Math.Max(0f, Math.Min(1f, faceImage[1][y, x])) * 255);
+                                        int r = (int)(Math.Max(0f, Math.Min(1f, faceImage[2][y, x])) * 255);
+                                        facePixels[y * faceW + x] = unchecked((int)0xFF000000) | (r << 16) | (g << 8) | b;
+                                    }
+                                }
+                                using var faceBitmap = global::Android.Graphics.Bitmap.CreateBitmap(facePixels, faceW, faceH, global::Android.Graphics.Bitmap.Config.Argb8888);
+                                using var msFace = new MemoryStream();
+                                faceBitmap.Compress(global::Android.Graphics.Bitmap.CompressFormat.Jpeg, 100, msFace);
+                                croppedFaceBytes = msFace.ToArray();
+                            }
+                            catch (Exception cropEx)
+                            {
+                                Debug.WriteLine($"[Telemetry] Failed to encode cropped face: {cropEx.Message}");
+                            }
+#endif
+
                             swStage.Restart();
                             // Generate embedding
                             float[] embedding = _faceEmbedder.Forward(faceImage);
@@ -385,12 +418,21 @@ namespace FaceRecognitionExample
                     loadingIndicator.IsRunning = false;
                     loadingIndicator.IsVisible = false;
 
-                    // Switch from live camera to static image
+                    // Switch from live camera to static image container
                     cameraView.IsVisible = false;
-                    imgPreview.IsVisible = true;
+                    resultContainer.IsVisible = true;
+                    
+                    // Reset slider state
+                    sliderPreview.Value = 0;
+                    sliderPreview.IsVisible = true;
                     
                     // Set image source
                     imgPreview.Source = ImageSource.FromStream(() => new MemoryStream(imageBytes));
+
+                    if (croppedFaceBytes != null)
+                    {
+                        imgCroppedFace.Source = ImageSource.FromStream(() => new MemoryStream(croppedFaceBytes));
+                    }
 
                     // Show retake button
                     btnRetake.IsVisible = true;
@@ -422,6 +464,22 @@ namespace FaceRecognitionExample
                 });
             }
         }
+
+        private void OnPreviewSliderValueChanged(object sender, ValueChangedEventArgs e)
+        {
+            if (e.NewValue < 0.5)
+            {
+                gridOriginal.IsVisible = true;
+                gridCropped.IsVisible = false;
+                lblPreviewCaption.Text = "Gambar Asli + Bounding Box";
+            }
+            else
+            {
+                gridOriginal.IsVisible = false;
+                gridCropped.IsVisible = true;
+                lblPreviewCaption.Text = "Gambar Potongan Wajah (Input Embedder)";
+            }
+        }
     }
 
     public class FaceBoundingBoxDrawable : IDrawable
@@ -429,6 +487,7 @@ namespace FaceRecognitionExample
         public FaceDetectionResult[] Faces { get; set; }
         public int ImageWidth { get; set; } = 1;
         public int ImageHeight { get; set; } = 1;
+        public bool IsMirrored { get; set; } = false;
 
         public void Draw(ICanvas canvas, RectF dirtyRect)
         {
@@ -452,8 +511,11 @@ namespace FaceRecognitionExample
                 float width = box.Width * scaleX;
                 float height = box.Height * scaleY;
 
-                // Flip X for Front Camera mirroring (Viewfinder is mirrored, AI coordinates are not)
-                x = dirtyRect.Width - x - width;
+                // Flip X for Front Camera mirroring if applicable
+                if (IsMirrored)
+                {
+                    x = dirtyRect.Width - x - width;
+                }
 
                 canvas.DrawRectangle(x, y, width, height);
                 
