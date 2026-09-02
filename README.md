@@ -1,70 +1,71 @@
-# Setup Guide — Face Recognition Offline (.NET MAUI)
+# Offline Face Recognition (Android)
 
-## Sebelum mulai pakai AI agent (checklist manusia)
+Selamat datang di proyek **Face Recognition**! Aplikasi Android ini dibuat menggunakan **.NET MAUI** dan dirancang untuk bisa mengenali wajah seseorang secara **100% Offline** langsung di dalam HP Anda, tanpa butuh koneksi internet sama sekali.
 
-- [ ] Install .NET 8 SDK
-- [ ] Install MAUI workload: `dotnet workload install maui`
-- [ ] Install Android SDK (via Visual Studio installer, atau `dotnet workload install android`)
-- [ ] Colok device Android fisik low-end target, aktifkan Developer Options +
-      USB Debugging, dan **izinkan prompt "Allow USB debugging?"** yang muncul
-      di layar HP saat pertama connect (ini wajib dilakukan manusia, tidak bisa
-      diotomasi lewat command line)
-- [ ] Jalankan `adb devices` untuk pastikan device terdeteksi
-- [ ] Taruh file `CLAUDE.md`, `SPEC.md`, dan `Directory.Packages.props` ini di
-      root folder project (setelah project di-generate di langkah berikutnya)
+Aplikasi ini juga sangat pintar karena memiliki fitur **Anti-Spam**: Jika wajah Anda sudah terekam, sistem tidak akan mencatat wajah Anda lagi selama 5 menit ke depan.
 
-## Langkah generate project awal
+---
 
-```bash
-# Generate skeleton project MAUI
-dotnet new maui -n FaceRecogApp
-cd FaceRecogApp
+## Dibuat Menggunakan Apa Saja?
 
-# Copy file-file ini (CLAUDE.md, SPEC.md, Directory.Packages.props, .gitignore)
-# ke root folder FaceRecogApp
-```
+Aplikasi ini ditenagai oleh beberapa paket (*library*) yaitu:
 
-## Menjalankan AI agent
+- **`FaceONNX`**: Otak utama AI kita. Digunakan untuk merapikan foto wajah (*Alignment*) dan mengekstrak identitas wajah menjadi angka matematika (*Embedding*).
+- **`Microsoft.ML.OnnxRuntime`**: Mesin penggerak yang membuat AI bisa berjalan mulus di HP Android Anda.
+- **`sqlite-net-pcl`**: Database lokal (SQLite) tempat kita menyimpan histori wajah yang sudah terdeteksi.
+- **`CommunityToolkit.Maui.Camera`**: Kamera bawaan MAUI untuk mengambil foto beresolusi tinggi.
 
-Setelah file `CLAUDE.md` ada di root project, buka Claude Code (atau agent
-lain) di folder tersebut. Agent akan otomatis membaca `CLAUDE.md` sebagai
-konteks. Contoh instruksi awal ke agent:
+---
 
-```
-Mulai dari Fase 1 sesuai CLAUDE.md: setup project skeleton, tambahkan
-package NuGet dari Directory.Packages.props, dan pastikan kamera preview
-bisa jalan di MainPage.
-```
+## Model AI & Lokasinya
 
-Kerjakan **satu fase per sesi**, jangan minta agent langsung kerjakan semua
-fase sekaligus — ini supaya kamu bisa verifikasi tiap tahap sebelum lanjut,
-dan supaya kalau ada yang salah, gampang di-trace di fase mana masalahnya.
+Kita menggunakan dua AI yang bekerja sama ibarat **"Mata"** dan **"Otak"**:
 
-## Setelah tiap fase (checklist verifikasi manusia)
+1. **"Mata" (Model YuNet)**
+   - **Tugas:** Hanya mencari tahu *di mana* lokasi wajah Anda di layar (menghasilkan kotak merah).
+   - **Lokasi File:** Tersimpan di dalam folder `Resources/Raw/face_detection_yunet_320.onnx`.
+   - **Ukuran:** Menggunakan resolusi `320x320` piksel agar bisa melihat wajah dari jarak cukup jauh.
 
-- [ ] Build project: `dotnet build`
-- [ ] Deploy ke device fisik: `dotnet build -t:Run -f net8.0-android`
-      (atau lewat Visual Studio Run button)
-- [ ] Amati hasil visual di layar device (preview kamera, bounding box,
-      popup, dll) — ini tidak bisa diverifikasi oleh agent sendiri
-- [ ] Kalau ada bug/behavior aneh yang hanya muncul di device fisik,
-      laporkan ke agent dengan detail: langkah reproduksi, pesan error
-      dari `adb logcat` kalau ada, dan device spec yang dipakai
+2. **"Otak" (Model ArcFace / FaceEmbedder)**
+   - **Tugas:** Mengingat dan mengenali *siapa* Anda dari potongan foto wajah tersebut.
+   - **Lokasi File:** Model ini **sudah tertanam langsung** di dalam *package* `FaceONNX`. Jadi Anda tidak akan menemukan file `.onnx`-nya secara fisik di folder proyek.
 
-## Verifikasi khusus terkait FaceONNX (lakukan sebelum Fase 3)
+---
 
-```bash
-# Setelah dotnet restore, cek apakah model .onnx benar ter-bundle
-find ~/.nuget/packages/faceonnx -name "*.onnx"
-```
+## Pengaturan Sensitivitas (Konstanta)
 
-Kalau hasil kosong, berarti model TIDAK otomatis include dan perlu
-didownload manual dari https://github.com/FaceONNX/FaceONNX.Models —
-laporkan hasil ini ke agent supaya strategi loading model disesuaikan.
+Semua pengaturan angka atau ambang batas sensitivitas aplikasi berpusat di satu file khusus, yaitu:
+**[`AppConstants.cs`](/AppConstants.cs)**
 
-## Milestone pengukuran performa (Fase 5)
+Di dalam file ini, Anda bebas mengubah parameter berikut:
+- **`SimilarityThreshold` (0.6f)**: Tingkat toleransi kemiripan wajah. Semakin mendekati 1.0, AI akan semakin ketat (hanya mengenali wajah yang benar-benar mirip 100%).
+- **`MinFaceSizeThreshold` (270)**: Ukuran kotak wajah minimum dalam piksel agar sistem *Live Tracking* mau memproses wajah tersebut.
+- **`CooldownMinutes` (5)**: Lama waktu anti-duplikat. Wajah yang sama tidak akan disimpan ulang sebelum durasi ini habis.
 
-Siapkan device fisik low-end target sebelum fase ini. Ukur waktu tiap
-tahap (capture → detect → embed → match → save) secara terpisah, catat
-hasilnya, baru putuskan bagian mana yang perlu dioptimasi kalau total
-melebihi 1.5 detik.
+---
+
+## Dua Macam Mode Kamera
+
+Karena deteksi wajah butuh perlakuan berbeda, kami menyiapkan 2 mode kamera:
+
+- **Mode "Capture & Detect" (Manual)**
+  Seperti kamera HP biasa. Anda menekan tombol jepret, lalu aplikasi akan berpikir sejenak untuk menganalisa foto tersebut secara perlahan namun sangat akurat.
+  
+- **Mode "Live Tracking" (Otomatis & Ngebut)**
+  Kamera ini menyala terus dan melacak wajah Anda secara *real-time*. Untuk mencapai kecepatan tinggi, kami tidak memakai kamera MAUI biasa, melainkan menggunakan *Native Android CameraX agar gambar dari lensa bisa langsung diberikan ke AI dalam hitungan milidetik!
+
+---
+
+## Bagaimana Cara Kerjanya? (Alur / Pipeline)
+
+Bayangkan Anda berdiri di depan kamera, inilah yang terjadi di dalam mesin dalam waktu kurang dari 1 detik:
+
+1. **Melihat (Deteksi):** AI YuNet memindai layar dan menggambar kotak merah di wajah Anda.
+2. **Filter Pintar (Khusus Live):** Jika wajah Anda terlalu jauh (kotak merah kurang dari `270px`), mesin akan berhenti untuk menghemat baterai. Anda harus mendekat!
+3. **Merapikan (Alignment):** Jika ukuran pas, wajah Anda akan dipotong, dilebarkan sedikit, dan posisinya diluruskan.
+4. **Mengingat (Embedding):** Wajah Anda diubah menjadi deretan angka sandi rahasia (Vektor).
+5. **Mencocokkan (Matching):** Sistem mengecek database: *"Apakah sandi wajah ini sudah pernah lewat dalam 5 menit terakhir?"*
+6. **Simpan:** Jika sudah pernah, maka **Ditolak (Duplikat)**. Jika belum pernah, maka wajah Anda **Tersimpan** di database!
+
+---
+*Dibuat menggunakan .NET 8.0 MAUI.*
