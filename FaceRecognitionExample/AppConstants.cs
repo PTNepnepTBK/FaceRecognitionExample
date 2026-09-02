@@ -15,5 +15,8 @@ namespace FaceRecognitionExample
         
         public const string CaptureModelFile = "face_detection_yunet_320.onnx";
         public const int CaptureModelSize = 320;
+
+        // Minimum face size (width or height) to trigger recognition pipeline
+        public const int MinFaceSizeThreshold = 270;
     }
 }

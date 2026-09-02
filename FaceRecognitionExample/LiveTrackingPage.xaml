@@ -47,6 +47,21 @@
             <Label x:Name="lblTime"
                    Text="Proses: - ms"
                    TextColor="White" />
+                   
+            <Label x:Name="lblAvgFps"
+                   Text="Avg Deteksi: - FPS"
+                   TextColor="LightBlue" />
+                   
+            <Label x:Name="lblAvgLatency"
+                   Text="Avg Latensi (Full Pipeline): - ms"
+                   TextColor="LightGreen" />
+                   
+            <BoxView HeightRequest="1" Color="Gray" Margin="0,5,0,5" />
+            
+            <Label x:Name="lblPipelineResults"
+                   Text=""
+                   TextColor="Orange"
+                   FontSize="Small" />
         </VerticalStackLayout>
     </Grid>
 
