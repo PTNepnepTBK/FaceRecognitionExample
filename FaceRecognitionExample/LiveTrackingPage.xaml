@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:controls="clr-namespace:FaceRecognitionExample.Controls"
+             x:Class="FaceRecognitionExample.LiveTrackingPage"
+             Title="Live Face Tracking">
+
+    <Grid>
+        <!-- 1:1 Camera Container -->
+        <Grid x:Name="cameraContainer" HorizontalOptions="Center" VerticalOptions="Center">
+            
+            <controls:LiveCameraView 
+                x:Name="liveCamera"
+                HorizontalOptions="Fill"
+                VerticalOptions="Fill" />
+
+            <!-- Overlay for Bounding Boxes -->
+            <GraphicsView 
+                x:Name="graphicsView"
+                HorizontalOptions="Fill"
+                VerticalOptions="Fill"
+                InputTransparent="True" />
+        </Grid>
+
+        <!-- Overlay Info Panel -->
+        <VerticalStackLayout
+            HorizontalOptions="Start"
+            VerticalOptions="Start"
+            Margin="20"
+            Spacing="5"
+            BackgroundColor="#80000000"
+            Padding="10">
+            
+            <Label x:Name="lblStatus"
+                   Text="Loading Model..."
+                   TextColor="White"
+                   FontAttributes="Bold" />
+                   
+            <Label x:Name="lblFaceInfo"
+                   Text="Tidak ada wajah"
+                   TextColor="White" />
+                   
+            <Label x:Name="lblBoxSize"
+                   Text="Ukuran: -"
+                   TextColor="White" />
+                   
+            <Label x:Name="lblTime"
+                   Text="Proses: - ms"
+                   TextColor="White" />
+        </VerticalStackLayout>
+    </Grid>
+
+</ContentPage>

@@ -8,5 +8,12 @@ namespace FaceRecognitionExample
 
         // Cooldown duration in minutes to prevent duplicate face detections
         public const int CooldownMinutes = 5;
+
+        // Model Constants
+        public const string LiveTrackingModelFile = "face_detection_yunet_160.onnx";
+        public const int LiveTrackingModelSize = 160;
+        
+        public const string CaptureModelFile = "face_detection_yunet_320.onnx";
+        public const int CaptureModelSize = 320;
     }
 }

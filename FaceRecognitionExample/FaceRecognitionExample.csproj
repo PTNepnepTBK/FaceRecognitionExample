@@ -2,6 +2,8 @@
 
 	<PropertyGroup>
 		<TargetFramework>net8.0-android</TargetFramework>
+		<CheckEolTargetFramework>false</CheckEolTargetFramework>
+		<CheckEolWorkloads>false</CheckEolWorkloads>
 		<!-- Uncomment to also build the tizen app. You will need to install tizen by following this: https://github.com/Samsung/Tizen.NET -->
 		<!-- <TargetFrameworks>$(TargetFrameworks);net8.0-tizen</TargetFrameworks> -->
 
@@ -64,6 +66,7 @@
 		<PackageReference Include="sqlite-net-pcl" />
 		<PackageReference Include="CommunityToolkit.Maui.Camera" />
 		<PackageReference Include="CommunityToolkit.Maui" />
+		<PackageReference Include="Xamarin.Google.MLKit.FaceDetection" />
 	</ItemGroup>
 
 </Project>

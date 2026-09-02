@@ -16,6 +16,12 @@ namespace FaceRecognitionExample
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
+                })
+                .ConfigureMauiHandlers(handlers =>
+                {
+#if ANDROID
+                    handlers.AddHandler(typeof(Controls.LiveCameraView), typeof(Platforms.Android.Handlers.LiveCameraViewHandler));
+#endif
                 });
 
 #if DEBUG
@@ -28,6 +34,7 @@ namespace FaceRecognitionExample
 
             // Register Pages
             builder.Services.AddTransient<MainPage>();
+            builder.Services.AddTransient<LiveTrackingPage>();
 
             return builder.Build();
         }

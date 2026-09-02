@@ -8,18 +8,16 @@
     <PackageVersion Include="Microsoft.ML.OnnxRuntime" Version="1.18.0" />
     <PackageVersion Include="Microsoft.ML.OnnxRuntime.Managed" Version="1.18.0" />
     <PackageVersion Include="UMapx" Version="7.5.1.5" />
-
     <!-- Local storage -->
     <PackageVersion Include="sqlite-net-pcl" Version="1.9.172" />
     <PackageVersion Include="SQLitePCLRaw.bundle_green" Version="2.1.10" />
-
     <!-- Kamera (opsi awal, evaluasi lagi di Fase 1) -->
     <PackageVersion Include="CommunityToolkit.Maui.Camera" Version="1.0.5" />
     <PackageVersion Include="CommunityToolkit.Maui" Version="9.1.1" />
-
     <!-- MAUI Core -->
     <PackageVersion Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
     <PackageVersion Include="Microsoft.Maui.Controls.Compatibility" Version="$(MauiVersion)" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="8.0.1" />
+    <PackageVersion Include="Xamarin.Google.MLKit.FaceDetection" Version="16.1.7" />
   </ItemGroup>
 </Project>

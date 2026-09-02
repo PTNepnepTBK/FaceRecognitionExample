@@ -19,7 +19,7 @@
                 x:Name="imgPreview"
                 HorizontalOptions="Fill"
                 VerticalOptions="Fill"
-                Aspect="AspectFit"
+                Aspect="AspectFill"
                 IsVisible="False" />
 
             <!-- Overlay for Bounding Boxes -->
@@ -63,6 +63,11 @@
                 x:Name="btnCapture"
                 Text="Capture &amp; Detect"
                 Clicked="OnCaptureClicked" />
+
+            <Button
+                x:Name="btnLiveTracking"
+                Text="Live Tracking"
+                Clicked="OnLiveTrackingClicked" />
 
             <Button 
                 x:Name="btnRetake"

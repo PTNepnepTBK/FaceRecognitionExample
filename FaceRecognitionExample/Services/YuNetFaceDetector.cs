@@ -15,6 +15,11 @@ namespace FaceRecognitionExample.Services
         private readonly int _inputW;
         private readonly int _inputH;
 
+        private static readonly FieldInfo BoxField = typeof(FaceDetectionResult).GetField("<Rectangle>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance);
+        private static readonly FieldInfo PointsField = typeof(FaceDetectionResult).GetField("<Points>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance);
+        private static readonly FieldInfo ScoreField = typeof(FaceDetectionResult).GetField("<Score>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance);
+        private static readonly Type Face5LandmarksType = typeof(FaceDetectionResult).Assembly.GetType("FaceONNX.Face5Landmarks");
+
 
         public YuNetFaceDetector(byte[] model, int inputW = 640, int inputH = 640)
         {
@@ -25,12 +30,13 @@ namespace FaceRecognitionExample.Services
             _inputH = inputH;
         }
 
-        // GeneratePriors is no longer needed since 2023mar uncombined model decodes dynamically per stride
-        public FaceDetectionResult[] Forward(float[][,] image)
+        // Extremely fast forward directly from 1D int array (Android Bitmap Pixels)
+        public FaceDetectionResult[] FastForward(int[] pixels, int w, int h)
         {
             var tensor = new DenseTensor<float>(new[] { 1, 3, _inputH, _inputW });
-            int h = image[0].GetLength(0);
-            int w = image[0].GetLength(1);
+            var span = tensor.Buffer.Span;
+            int strideG = _inputH * _inputW; // offset for G channel
+            int strideR = 2 * _inputH * _inputW; // offset for R channel
             
             float scaleX = (float)w / _inputW;
             float scaleY = (float)h / _inputH;
@@ -39,17 +45,23 @@ namespace FaceRecognitionExample.Services
             {
                 int origY = (int)(y * scaleY);
                 if (origY >= h) origY = h - 1;
+                
+                int yOffset = origY * w;
+                int tensorYOffset = y * _inputW;
+                
                 for (int x = 0; x < _inputW; x++)
                 {
                     int origX = (int)(x * scaleX);
                     if (origX >= w) origX = w - 1;
 
-                    // OpenCV YuNet expects BGR format 0-255. 
-                    // FaceONNX UMapx usually returns [R, G, B].
-                    // So we assign image[2] (B) to tensor 0, image[1] to 1, image[0] to 2.
-                    tensor[0, 0, y, x] = image[2][origY, origX] * 255f; // B
-                    tensor[0, 1, y, x] = image[1][origY, origX] * 255f; // G
-                    tensor[0, 2, y, x] = image[0][origY, origX] * 255f; // R
+                    int color = pixels[yOffset + origX];
+                    
+                    int idx = tensorYOffset + x;
+                    
+                    // OpenCV YuNet expects BGR format 0-255.
+                    span[idx] = (color & 0xff);                 // B
+                    span[strideG + idx] = ((color >> 8) & 0xff);          // G
+                    span[strideR + idx] = ((color >> 16) & 0xff);         // R
                 }
             }
 
@@ -129,15 +141,11 @@ namespace FaceRecognitionExample.Services
                             var box = new System.Drawing.Rectangle((int)x1, (int)y1, boxW, boxH);
                             
                             object resultObj = Activator.CreateInstance(typeof(FaceDetectionResult));
-                            var boxField = typeof(FaceDetectionResult).GetField("<Rectangle>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance);
-                            var pointsField = typeof(FaceDetectionResult).GetField("<Points>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance);
-                            var scoreField = typeof(FaceDetectionResult).GetField("<Score>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance);
-                            
-                            object landmarksObj = Activator.CreateInstance(typeof(FaceDetectionResult).Assembly.GetType("FaceONNX.Face5Landmarks"), new object[] { points });
+                            object landmarksObj = Activator.CreateInstance(Face5LandmarksType, new object[] { points });
 
-                            if (boxField != null) boxField.SetValue(resultObj, box);
-                            if (pointsField != null) pointsField.SetValue(resultObj, landmarksObj);
-                            if (scoreField != null) scoreField.SetValue(resultObj, score);
+                            if (BoxField != null) BoxField.SetValue(resultObj, box);
+                            if (PointsField != null) PointsField.SetValue(resultObj, landmarksObj);
+                            if (ScoreField != null) ScoreField.SetValue(resultObj, score);
 
                             candidates.Add((FaceDetectionResult)resultObj);
                         }

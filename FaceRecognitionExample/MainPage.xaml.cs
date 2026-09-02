@@ -42,11 +42,11 @@ namespace FaceRecognitionExample
                     // Initialize with custom options and default thresholds (0.3f, 0.4f, 0.5f)
                     // _faceDetector = new FaceDetector(options, 0.3f, 0.4f, 0.5f);
                     
-                    using var stream = await FileSystem.OpenAppPackageFileAsync("face_detection_yunet.onnx");
+                    using var stream = await FileSystem.OpenAppPackageFileAsync(AppConstants.CaptureModelFile);
                     using var memoryStream = new MemoryStream();
                     await stream.CopyToAsync(memoryStream);
                     byte[] modelBytes = memoryStream.ToArray();
-                    _yuNetDetector = new YuNetFaceDetector(modelBytes, 640, 640);
+                    _yuNetDetector = new YuNetFaceDetector(modelBytes, AppConstants.CaptureModelSize, AppConstants.CaptureModelSize);
 
                     _faceEmbedder = new FaceEmbedder(options);
                     _isModelLoading = false;
@@ -116,7 +116,7 @@ namespace FaceRecognitionExample
             }
         }
 
-        private async void OnRetakeClicked(object sender, EventArgs e)
+        private void OnRetakeClicked(object sender, EventArgs e)
         {
             // Reset UI
             loadingIndicator.IsRunning = false;
@@ -131,6 +131,11 @@ namespace FaceRecognitionExample
             _drawable.Faces = null;
             graphicsView.Invalidate();
             lblStatus.Text = "Model Siap";
+        }
+
+        private async void OnLiveTrackingClicked(object sender, EventArgs e)
+        {
+            await Shell.Current.GoToAsync(nameof(LiveTrackingPage));
         }
 
         private async void OnMediaCaptured(object sender, MediaCapturedEventArgs e)
@@ -202,11 +207,11 @@ namespace FaceRecognitionExample
                     var swStage = Stopwatch.StartNew();
 
                     // Fast decode bounds to calculate inSampleSize
-                    var options = new Android.Graphics.BitmapFactory.Options();
+                    var options = new global::Android.Graphics.BitmapFactory.Options();
                     options.InJustDecodeBounds = true;
-                    Android.Graphics.BitmapFactory.DecodeByteArray(imageBytes, 0, imageBytes.Length, options);
+                    global::Android.Graphics.BitmapFactory.DecodeByteArray(imageBytes, 0, imageBytes.Length, options);
                     
-                    int maxDim = 160; // Set to 160 to perfectly match YuNet 160x160 input size
+                    int maxDim = AppConstants.CaptureModelSize; // Match YuNet model input size
                     options.InSampleSize = 1;
                     if (options.OutWidth > maxDim || options.OutHeight > maxDim)
                     {
@@ -219,7 +224,7 @@ namespace FaceRecognitionExample
                     }
                     
                     options.InJustDecodeBounds = false;
-                    using var originalBitmap = Android.Graphics.BitmapFactory.DecodeByteArray(imageBytes, 0, imageBytes.Length, options);
+                    using var originalBitmap = global::Android.Graphics.BitmapFactory.DecodeByteArray(imageBytes, 0, imageBytes.Length, options);
                     
                     if (originalBitmap != null)
                     {
@@ -227,12 +232,10 @@ namespace FaceRecognitionExample
                         int size = Math.Min(originalBitmap.Width, originalBitmap.Height);
                         int xOffset = (originalBitmap.Width - size) / 2;
                         int yOffset = (originalBitmap.Height - size) / 2;
-                        using var squareBitmap = Android.Graphics.Bitmap.CreateBitmap(originalBitmap, xOffset, yOffset, size, size);
+                        using var squareBitmap = global::Android.Graphics.Bitmap.CreateBitmap(originalBitmap, xOffset, yOffset, size, size);
 
-                        // Re-encode square image back to bytes so UI (imgPreview) shows exactly what the AI sees
-                        using var ms = new System.IO.MemoryStream();
-                        squareBitmap.Compress(Android.Graphics.Bitmap.CompressFormat.Jpeg, 90, ms);
-                        imageBytes = ms.ToArray(); // Override original imageBytes with the square one
+                        // Original imageBytes is preserved for the UI.
+                        // We use squareBitmap only to feed the AI.
 
                         int width = size;
                         int height = size;
@@ -245,7 +248,7 @@ namespace FaceRecognitionExample
                         }
 
                         // Create scaled bitmap for AI from the square one
-                        using var androidBitmap = Android.Graphics.Bitmap.CreateScaledBitmap(squareBitmap, width, height, true);
+                        using var androidBitmap = global::Android.Graphics.Bitmap.CreateScaledBitmap(squareBitmap, width, height, true);
 
                         int[] pixels = new int[width * height];
                         androidBitmap.GetPixels(pixels, 0, width, 0, 0, width, height);
@@ -260,20 +263,19 @@ namespace FaceRecognitionExample
                             for (int x = 0; x < width; x++)
                             {
                                 int color = pixels[y * width + x];
-                                // FaceONNX (UMapx) expects BGR format! Fast bitwise extraction
+                                // FaceONNX expects BGR format!
                                 imageMatrix[0][y, x] = (color & 0xff) / 255f;                 // Blue
                                 imageMatrix[1][y, x] = ((color >> 8) & 0xff) / 255f;          // Green
                                 imageMatrix[2][y, x] = ((color >> 16) & 0xff) / 255f;         // Red
                             }
                         }
-                        
+
                         swStage.Stop();
                         tPreprocess = swStage.ElapsedMilliseconds;
-                        Debug.WriteLine($"[Telemetry] Preprocessing (1:1 & Matrix): {tPreprocess} ms");
+                        Debug.WriteLine($"[Telemetry] Preprocessing (1:1 & Pixel Extr): {tPreprocess} ms");
 
                         swStage.Restart();
-                        // faces = _faceDetector.Forward(imageMatrix); // Already in Task.Run
-                        faces = _yuNetDetector.Forward(imageMatrix);
+                        faces = _yuNetDetector.FastForward(pixels, width, height);
                         swStage.Stop();
                         tDetect = swStage.ElapsedMilliseconds;
                         Debug.WriteLine($"[Telemetry] FaceDetector.Forward: {tDetect} ms");
@@ -449,6 +451,9 @@ namespace FaceRecognitionExample
                 float y = box.Y * scaleY;
                 float width = box.Width * scaleX;
                 float height = box.Height * scaleY;
+
+                // Flip X for Front Camera mirroring (Viewfinder is mirrored, AI coordinates are not)
+                x = dirtyRect.Width - x - width;
 
                 canvas.DrawRectangle(x, y, width, height);
                 
